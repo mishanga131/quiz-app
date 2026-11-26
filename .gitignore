@@ -6,8 +6,7 @@ dist/
 dist-ssr/
 *.tsbuildinfo
 
-# Локальні змінні оточення (шаблон — .env.example)
-.env
+# Локальні змінні оточення (секрети)
 .env.local
 .env.*.local
 
