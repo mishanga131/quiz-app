@@ -20,13 +20,47 @@ interface SavedProgress {
   stage: QuizStage;
 }
 
-function readProgress(): SavedProgress | null {
+const STAGES: QuizStage[] = ['start', 'question', 'result'];
+
+/**
+ * Читає збережений прогрес і перевіряє його відносно поточного набору запитань.
+ * Некоректні або застарілі дані відкидаються, щоб не зламати стан інтерфейсу.
+ */
+function readProgress(questions: Question[]): SavedProgress | null {
+  let parsed: unknown;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as SavedProgress) : null;
+    if (!raw) return null;
+    parsed = JSON.parse(raw);
   } catch {
     return null;
   }
+  if (typeof parsed !== 'object' || parsed === null) return null;
+  const p = parsed as Record<string, unknown>;
+
+  const stage = p.stage as QuizStage;
+  if (!STAGES.includes(stage)) return null;
+
+  const index = p.currentIndex;
+  if (typeof index !== 'number' || !Number.isInteger(index) || index < 0 || index >= questions.length) return null;
+
+  if (typeof p.answers !== 'object' || p.answers === null || Array.isArray(p.answers)) return null;
+  const rawAnswers = p.answers as Record<string, unknown>;
+
+  // Залишаємо лише відповіді на існуючі запитання з допустимим індексом варіанту
+  const answers: AnswerMap = {};
+  for (const q of questions) {
+    const value = rawAnswers[String(q.id)];
+    if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < q.options.length) {
+      answers[q.id] = value;
+    }
+  }
+
+  // Екран результатів можливий лише якщо відповіді є на всі запитання
+  const allAnswered = Object.keys(answers).length === questions.length;
+  const safeStage: QuizStage = stage === 'result' && !allAnswered ? 'question' : stage;
+
+  return { answers, currentIndex: index, stage: safeStage };
 }
 
 function writeProgress(progress: SavedProgress | null): void {
@@ -131,8 +165,8 @@ export function useQuiz() {
       state.description = quiz.description;
       state.questions = quiz.questions;
 
-      const saved = readProgress();
-      if (saved && saved.currentIndex < quiz.questions.length) {
+      const saved = readProgress(quiz.questions);
+      if (saved) {
         state.answers = saved.answers;
         state.currentIndex = saved.currentIndex;
         state.stage = saved.stage;

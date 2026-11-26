@@ -5,11 +5,13 @@ function isValidQuestion(q: unknown): q is Question {
   if (typeof q !== 'object' || q === null) return false;
   const v = q as Partial<Question>;
   return (
-    typeof v.id === 'number' &&
+    Number.isInteger(v.id) &&
     typeof v.text === 'string' &&
+    v.text.trim().length > 0 &&
     Array.isArray(v.options) &&
     v.options.length >= 2 &&
-    v.options.every((o) => typeof o === 'string') &&
+    v.options.every((o) => typeof o === 'string' && o.trim().length > 0) &&
+    Number.isInteger(v.correctIndex) &&
     typeof v.correctIndex === 'number' &&
     v.correctIndex >= 0 &&
     v.correctIndex < v.options.length
@@ -28,6 +30,10 @@ export const quizService = {
     }
     if (data.questions.length === 0) {
       throw new ApiError('Набір запитань порожній');
+    }
+    const ids = new Set(data.questions.map((q) => q.id));
+    if (ids.size !== data.questions.length) {
+      throw new ApiError('У наборі є запитання з однаковим id');
     }
     return data;
   },
