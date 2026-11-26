@@ -16,7 +16,7 @@ export class ApiError extends Error {
  * Адреса береться з файлу оточення (.env → VITE_API_BASE_URL).
  */
 export const http: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api-mock',
   timeout: 10_000,
   headers: { Accept: 'application/json' },
 });
